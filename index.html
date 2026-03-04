@@ -6,97 +6,127 @@
     <title>Sanchez Tracking</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .tab-active { border-bottom: 4px solid white; font-weight: bold; }
-        .bg-van { background-color: #22c55e; }
+        .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen pb-20">
 
-    <header class="bg-green-600 text-white sticky top-0 z-50 shadow-lg">
-        <div class="p-4 flex justify-between items-center">
-            <h1 class="text-xl font-bold">Sanchez Tracking</h1>
-            <div class="text-right">
-                <p id="saldo-hoy" class="text-lg font-bold line-height-1">$0</p>
-                <p class="text-[10px] uppercase opacity-80">Hoy</p>
-            </div>
+    <header class="bg-green-600 text-white sticky top-0 z-50 shadow-lg text-center">
+        <div class="p-4">
+            <h1 class="text-xl font-bold italic">Sánchez Tracking</h1>
+            <p id="saldo-header" class="text-2xl font-bold mt-1 text-yellow-300">$0</p>
+            <p class="text-[10px] uppercase opacity-80">Recaudación de Hoy</p>
         </div>
         
         <div class="flex bg-green-700">
-            <button onclick="cambiarPantalla('carga')" id="tab-carga" class="flex-1 py-3 text-sm tab-active">CARGAR</button>
-            <button onclick="cambiarPantalla('ruta')" id="tab-ruta" class="flex-1 py-3 text-sm">MI RUTA</button>
+            <button onclick="cambiarPantalla('carga')" id="tab-carga" class="flex-1 py-3 text-sm tab-active uppercase">Cargar</button>
+            <button onclick="cambiarPantalla('ruta')" id="tab-ruta" class="flex-1 py-3 text-sm uppercase">Mi Ruta</button>
         </div>
     </header>
 
     <main id="pantalla-carga" class="p-4 max-w-md mx-auto">
-        <section class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
-            <h2 class="font-bold mb-4 text-gray-700">📦 Nueva Comisión</h2>
+        <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200">
+            <h2 class="font-bold mb-4 text-gray-700">📦 Cargar Nueva Comisión</h2>
             <div class="space-y-3">
-                <input type="text" id="cliente" placeholder="Nombre del Cliente" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
-                <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
-                <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
-                <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md">AÑADIR A LA RUTA</button>
+                <input type="text" id="cliente" placeholder="Nombre del Cliente" class="w-full border p-3 rounded-lg outline-none">
+                <input type="text" id="direccion" placeholder="Dirección (Solo Chascomús)" class="w-full border p-3 rounded-lg outline-none">
+                <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none">
+                <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md active:scale-95 transition">
+                    AÑADIR A LA RUTA
+                </button>
             </div>
-        </section>
+        </div>
     </main>
 
     <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden">
         <div id="lista-viajes" class="space-y-3">
-            <p class="text-center text-gray-500 mt-10">Cargando ruta...</p>
+            <p class="text-center text-gray-500 mt-10 italic">Cargando tu ruta del día...</p>
         </div>
     </main>
 
     <script>
+        // TU URL DE APPS SCRIPT
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxyO0WBTUimOZP3BiSVxMMnhwmpDCJkOr2Op6x2Kk13C6ACi4LiesuXc-nAvoWE2o8uRg/exec";
 
-        window.onload = () => { actualizarDatos(); };
+        window.onload = () => { actualizarTodo(); };
 
-        function cambiarPantalla(pantalla) {
-            document.getElementById('pantalla-carga').classList.toggle('hidden', pantalla !== 'carga');
-            document.getElementById('pantalla-ruta').classList.toggle('hidden', pantalla !== 'ruta');
-            document.getElementById('tab-carga').classList.toggle('tab-active', pantalla === 'carga');
-            document.getElementById('tab-ruta').classList.toggle('tab-active', pantalla === 'ruta');
-            if(pantalla === 'ruta') actualizarDatos();
+        function cambiarPantalla(p) {
+            document.getElementById('pantalla-carga').classList.toggle('hidden', p !== 'carga');
+            document.getElementById('pantalla-ruta').classList.toggle('hidden', p !== 'ruta');
+            document.getElementById('tab-carga').classList.toggle('tab-active', p === 'carga');
+            document.getElementById('tab-ruta').classList.toggle('tab-active', p === 'ruta');
+            if(p === 'ruta') actualizarTodo();
         }
 
-        async function actualizarDatos() {
+        async function enviarComision() {
+            const btn = document.getElementById('btn-cargar');
+            const c = document.getElementById('cliente');
+            const d = document.getElementById('direccion');
+            const v = document.getElementById('valor');
+
+            if(!c.value || !v.value) return alert("Completá cliente y valor");
+
+            btn.disabled = true;
+            btn.innerText = "GUARDANDO...";
+
             try {
-                const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ accion: "OBTENER_DATOS_COMPLETOS" }) });
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        accion: "AGREGAR_VIAJE",
+                        cliente: c.value,
+                        direccion: d.value,
+                        valor: v.value
+                    })
+                });
+
+                // REGLA: VACIAR CAMPOS TRAS ENVÍO
+                c.value = "";
+                d.value = "";
+                v.value = "";
+
+                alert("✅ Cargado con éxito");
+                cambiarPantalla('ruta'); // Te manda directo a la lista para ver el cambio
+            } catch (e) {
+                alert("Error de conexión");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "AÑADIR A LA RUTA";
+            }
+        }
+
+        async function actualizarTodo() {
+            try {
+                const res = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify({ accion: "OBTENER_DATOS_COMPLETOS" }) 
+                });
                 const data = await res.json();
                 
-                // Actualizar Saldo
-                document.getElementById('saldo-hoy').innerText = `$${data.hoy.toLocaleString()}`;
+                document.getElementById('saldo-header').innerText = `$${data.hoy.toLocaleString()}`;
 
-                // Renderizar Lista
                 const lista = document.getElementById('lista-viajes');
                 lista.innerHTML = "";
 
                 if(data.viajes.length === 0) {
-                    lista.innerHTML = '<p class="text-center text-gray-400 mt-10">No hay viajes cargados hoy.</p>';
+                    lista.innerHTML = '<p class="text-center text-gray-400 mt-10">Todavía no cargaste viajes hoy.</p>';
                     return;
                 }
 
                 data.viajes.forEach(v => {
                     const card = document.createElement('div');
-                    card.className = `p-4 rounded-lg shadow-sm border-l-4 ${v.estado === 'LISTO' ? 'bg-gray-100 border-gray-400 opacity-60' : 'bg-white border-green-500'}`;
+                    card.className = "bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center";
                     card.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <h3 class="font-bold text-gray-800">${v.cliente}</h3>
-                                <p class="text-sm text-gray-600">${v.direccion}</p>
-                                <p class="text-green-700 font-bold mt-1">$${v.valor}</p>
-                            </div>
-                            ${v.estado !== 'LISTO' ? `<button onclick="marcarListo('${v.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">MARCAR LISTO</button>` : '<span class="text-xs font-bold text-gray-500">✅ ENTREGADO</span>'}
+                        <div>
+                            <h3 class="font-bold text-gray-800">${v.cliente}</h3>
+                            <p class="text-xs text-gray-500">${v.direccion || 'Sin dirección'}</p>
+                            <p class="text-green-600 font-bold">$${v.valor}</p>
                         </div>
+                        <div class="text-xs font-bold text-gray-400">EN RUTA</div>
                     `;
                     lista.appendChild(card);
                 });
-            } catch (e) { console.error(e); }
-        }
-
-        async function enviarComision() {
-            // ... (Tu función de envío actual se mantiene igual, solo agregá al final cambiarPantalla('ruta'))
-            // Copiá aquí la lógica de enviarComision que ya tenías
-            // pero al final, dentro del try, poné: cambiarPantalla('ruta');
+            } catch (e) { console.error("Error al actualizar:", e); }
         }
     </script>
 </body>
