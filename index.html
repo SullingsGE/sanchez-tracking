@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sanchez Tracking</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .linea-progreso { position: absolute; left: 20px; top: 0; bottom: 0; width: 4px; background: #e2e8f0; z-index: 0; }
+        .punto-ruta { position: relative; z-index: 10; }
+        .completado { border-left: 4px solid #22c55e; background-color: #f0fdf4; }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans">
+
+    <header class="bg-green-600 text-white p-4 sticky top-0 z-50 shadow-md">
+        <h1 class="text-xl font-bold">Sanchez Tracking</h1>
+        <div class="flex justify-between mt-2 text-sm">
+            <div class="bg-green-700 p-2 rounded">HOY: <span id="saldo-hoy">$0</span></div>
+            <div class="bg-green-700 p-2 rounded">A COBRAR: <span id="a-cobrar">$0</span></div>
+        </div>
+    </header>
+
+    <main class="p-4">
+        <section class="bg-white p-4 rounded-lg shadow mb-6">
+            <h2 class="font-bold mb-3 text-gray-700 text-lg">Nueva Comisión</h2>
+            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-2 rounded mb-2">
+            <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-2 rounded mb-2">
+            <input type="number" id="valor" placeholder="Valor $" class="w-full border p-2 rounded mb-3">
+            <button onclick="enviarDatos()" id="btn-cargar" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold active:bg-green-700 transition">
+                AÑADIR A LA RUTA
+            </button>
+        </section>
+
+        <section class="relative">
+            <div class="linea-progreso"></div>
+            <div id="lista-viajes" class="space-y-4">
+                </div>
+        </section>
+    </main>
+
+    <script>
+        // REEMPLAZA CON TU URL DE APPS SCRIPT
+        const SCRIPT_URL = "TU_URL_DE_APPS_SCRIPT_AQUI"; 
+
+        async function enviarDatos() {
+            const btn = document.getElementById('btn-cargar');
+            const cliente = document.getElementById('cliente');
+            const direccion = document.getElementById('direccion');
+            const valor = document.getElementById('valor');
+
+            if(!cliente.value || !valor.value) return alert("Carga cliente y valor");
+
+            btn.disabled = true;
+            btn.innerText = "CARGANDO...";
+
+            const datos = {
+                accion: "AGREGAR_VIAJE",
+                cliente: cliente.value,
+                direccion: direccion.value,
+                valor: valor.value
+            };
+
+            try {
+                await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(datos) });
+                
+                // REGLA: VACIADO AUTOMÁTICO
+                cliente.value = "";
+                direccion.value = "";
+                valor.value = "";
+                
+                alert("Ruta actualizada");
+                location.reload(); // Para refrescar la lista del Sheet
+            } catch (error) {
+                alert("Error al conectar");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "AÑADIR A LA RUTA";
+            }
+        }
+    </script>
+</body>
+</html>
