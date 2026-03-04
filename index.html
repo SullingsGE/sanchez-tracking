@@ -7,16 +7,16 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
-        .card-listo { opacity: 0.6; background-color: #f3f4f6; border-left-color: #9ca3af !important; }
+        .card-listo { opacity: 0.5; background-color: #f3f4f6; border-left-color: #9ca3af !important; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen pb-20">
 
     <header class="bg-green-600 text-white sticky top-0 z-50 shadow-lg text-center">
         <div class="p-4">
-            <h1 class="text-xl font-bold italic">Sánchez Tracking</h1>
+            <h1 class="text-xl font-bold italic text-white">Sánchez Tracking</h1>
             <p id="saldo-header" class="text-2xl font-bold mt-1 text-yellow-300">$0</p>
-            <p class="text-[10px] uppercase opacity-80 font-bold">Recaudación de Hoy</p>
+            <p class="text-[10px] uppercase opacity-90 font-bold">Recaudación de Hoy</p>
         </div>
         
         <div class="flex bg-green-700">
@@ -27,12 +27,23 @@
 
     <main id="pantalla-carga" class="p-4 max-w-md mx-auto">
         <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200">
-            <h2 class="font-bold mb-4 text-gray-700">📦 Nueva Comisión</h2>
-            <div class="space-y-3">
-                <input type="text" id="cliente" placeholder="Nombre del Cliente" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
-                <input type="text" id="direccion" placeholder="Dirección (Chascomús)" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
-                <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
-                <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md active:scale-95 transition">
+            <h2 class="font-bold mb-4 text-gray-700 flex items-center gap-2">
+                📦 Nueva Comisión
+            </h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="text-xs text-gray-400 font-bold uppercase">Cliente</label>
+                    <input type="text" id="cliente" placeholder="Ej: Juan Pérez" class="w-full border-b-2 border-gray-200 p-2 outline-none focus:border-green-500 transition">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 font-bold uppercase">Dirección</label>
+                    <input type="text" id="direccion" placeholder="Ej: Belgrano 123" class="w-full border-b-2 border-gray-200 p-2 outline-none focus:border-green-500 transition">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 font-bold uppercase">Valor $</label>
+                    <input type="number" id="valor" placeholder="0.00" class="w-full border-b-2 border-gray-200 p-2 outline-none focus:border-green-500 transition text-xl font-bold text-green-700">
+                </div>
+                <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md active:scale-95 transition mt-4">
                     AÑADIR A LA RUTA
                 </button>
             </div>
@@ -41,12 +52,13 @@
 
     <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden">
         <div id="lista-viajes" class="space-y-3">
-            <p class="text-center text-gray-500 mt-10 italic">Cargando ruta...</p>
+            <p class="text-center text-gray-500 mt-10 italic">Cargando la ruta de hoy...</p>
         </div>
     </main>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzAe45fC-BlIA3RiiwDxMujItEe3HCZ1ZH86ku3yqadc9cWzsV9va4e30X2QF1cSK30rw/exec";
+        // TU URL DE APPS SCRIPT
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxyO0WBTUimOZP3BiSVxMMnhwmpDCJkOr2Op6x2Kk13C6ACi4LiesuXc-nAvoWE2o8uRg/exec";
 
         window.onload = () => { actualizarTodo(); };
 
@@ -64,14 +76,16 @@
             const d = document.getElementById('direccion');
             const v = document.getElementById('valor');
 
-            if(!c.value || !v.value) return alert("Completá cliente y valor");
+            if(!c.value || !v.value) return alert("Por favor, completá Cliente y Valor.");
 
             btn.disabled = true;
             btn.innerText = "GUARDANDO...";
 
             try {
+                // Usamos mode: 'no-cors' para evitar el error visual de conexión
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
+                    mode: 'no-cors', 
                     body: JSON.stringify({
                         accion: "AGREGAR_VIAJE",
                         cliente: c.value,
@@ -80,12 +94,16 @@
                     })
                 });
 
-                // REGLA: VACIAR CAMPOS
+                // VACIAR CAMPOS (Regla del usuario)
                 c.value = ""; d.value = ""; v.value = "";
                 
-                cambiarPantalla('ruta'); 
+                // Pequeña pausa para que Google procese y cambiar a ruta
+                setTimeout(() => {
+                    cambiarPantalla('ruta');
+                }, 500);
+
             } catch (e) {
-                alert("Error de conexión");
+                alert("Error al enviar. Verificá tu conexión.");
             } finally {
                 btn.disabled = false;
                 btn.innerText = "AÑADIR A LA RUTA";
@@ -93,6 +111,7 @@
         }
 
         async function actualizarTodo() {
+            const lista = document.getElementById('lista-viajes');
             try {
                 const res = await fetch(SCRIPT_URL, { 
                     method: 'POST', 
@@ -101,12 +120,10 @@
                 const data = await res.json();
                 
                 document.getElementById('saldo-header').innerText = `$${data.hoy.toLocaleString()}`;
-
-                const lista = document.getElementById('lista-viajes');
                 lista.innerHTML = "";
 
-                if(data.viajes.length === 0) {
-                    lista.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No hay viajes hoy.</p>';
+                if(!data.viajes || data.viajes.length === 0) {
+                    lista.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No hay viajes registrados hoy.</p>';
                     return;
                 }
 
@@ -115,27 +132,35 @@
                     const card = document.createElement('div');
                     card.className = `bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center ${esListo ? 'card-listo' : ''}`;
                     card.innerHTML = `
-                        <div>
-                            <h3 class="font-bold text-gray-800">${v.cliente}</h3>
-                            <p class="text-xs text-gray-500">${v.direccion || 'Sin dirección'}</p>
-                            <p class="text-green-600 font-bold">$${v.valor}</p>
+                        <div class="max-w-[70%]">
+                            <h3 class="font-bold text-gray-800 leading-tight">${v.cliente}</h3>
+                            <p class="text-xs text-gray-500 truncate">${v.direccion || 'Sin dirección'}</p>
+                            <p class="text-green-600 font-bold mt-1">$${v.valor}</p>
                         </div>
-                        ${esListo ? '<span class="text-xs font-bold text-gray-400">✅ OK</span>' : 
-                        `<button onclick="marcarListo('${v.id}')" class="bg-green-100 text-green-700 px-3 py-2 rounded-lg text-xs font-bold active:scale-90 transition">LISTO</button>`}
+                        <div>
+                            ${esListo ? 
+                                '<span class="bg-gray-200 text-gray-500 px-3 py-1 rounded-full text-[10px] font-bold">ENTREGADO</span>' : 
+                                `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold active:bg-green-800 transition shadow-sm">LISTO</button>`
+                            }
+                        </div>
                     `;
                     lista.appendChild(card);
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) { 
+                lista.innerHTML = '<p class="text-center text-red-400 mt-10 italic text-sm">Error al cargar la ruta. Reintentando...</p>';
+            }
         }
 
         async function marcarListo(id) {
             try {
                 await fetch(SCRIPT_URL, {
                     method: 'POST',
+                    mode: 'no-cors',
                     body: JSON.stringify({ accion: "COMPLETAR_VIAJE", id: id })
                 });
-                actualizarTodo();
-            } catch (e) { alert("Error al marcar"); }
+                // Actualizamos la lista después de un momento
+                setTimeout(actualizarTodo, 500);
+            } catch (e) { console.error("Error al marcar listo"); }
         }
     </script>
 </body>
