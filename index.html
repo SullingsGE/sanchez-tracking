@@ -6,77 +6,97 @@
     <title>Sanchez Tracking</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .linea-progreso { position: absolute; left: 20px; top: 0; bottom: 0; width: 4px; background: #e2e8f0; z-index: 0; }
-        .punto-ruta { position: relative; z-index: 10; }
-        .completado { border-left: 4px solid #22c55e; background-color: #f0fdf4; }
+        .tab-active { border-bottom: 4px solid white; font-weight: bold; }
+        .bg-van { background-color: #22c55e; }
     </style>
 </head>
-<body class="bg-gray-100 font-sans">
+<body class="bg-gray-100 min-h-screen pb-20">
 
-    <header class="bg-green-600 text-white p-4 sticky top-0 z-50 shadow-md">
-        <h1 class="text-xl font-bold">Sanchez Tracking</h1>
-        <div class="flex justify-between mt-2 text-sm">
-            <div class="bg-green-700 p-2 rounded">HOY: <span id="saldo-hoy">$0</span></div>
-            <div class="bg-green-700 p-2 rounded">A COBRAR: <span id="a-cobrar">$0</span></div>
+    <header class="bg-green-600 text-white sticky top-0 z-50 shadow-lg">
+        <div class="p-4 flex justify-between items-center">
+            <h1 class="text-xl font-bold">Sanchez Tracking</h1>
+            <div class="text-right">
+                <p id="saldo-hoy" class="text-lg font-bold line-height-1">$0</p>
+                <p class="text-[10px] uppercase opacity-80">Hoy</p>
+            </div>
+        </div>
+        
+        <div class="flex bg-green-700">
+            <button onclick="cambiarPantalla('carga')" id="tab-carga" class="flex-1 py-3 text-sm tab-active">CARGAR</button>
+            <button onclick="cambiarPantalla('ruta')" id="tab-ruta" class="flex-1 py-3 text-sm">MI RUTA</button>
         </div>
     </header>
 
-    <main class="p-4">
-        <section class="bg-white p-4 rounded-lg shadow mb-6">
-            <h2 class="font-bold mb-3 text-gray-700 text-lg">Nueva Comisión</h2>
-            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-2 rounded mb-2">
-            <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-2 rounded mb-2">
-            <input type="number" id="valor" placeholder="Valor $" class="w-full border p-2 rounded mb-3">
-            <button onclick="enviarDatos()" id="btn-cargar" class="w-full bg-green-600 text-white py-3 rounded-lg font-bold active:bg-green-700 transition">
-                AÑADIR A LA RUTA
-            </button>
-        </section>
-
-        <section class="relative">
-            <div class="linea-progreso"></div>
-            <div id="lista-viajes" class="space-y-4">
-                </div>
+    <main id="pantalla-carga" class="p-4 max-w-md mx-auto">
+        <section class="bg-white p-5 rounded-xl shadow-sm border border-gray-200">
+            <h2 class="font-bold mb-4 text-gray-700">📦 Nueva Comisión</h2>
+            <div class="space-y-3">
+                <input type="text" id="cliente" placeholder="Nombre del Cliente" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
+                <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
+                <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
+                <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md">AÑADIR A LA RUTA</button>
+            </div>
         </section>
     </main>
 
+    <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden">
+        <div id="lista-viajes" class="space-y-3">
+            <p class="text-center text-gray-500 mt-10">Cargando ruta...</p>
+        </div>
+    </main>
+
     <script>
-        // REEMPLAZA CON TU URL DE APPS SCRIPT
-        const SCRIPT_URL = "TU_URL_DE_APPS_SCRIPT_AQUI"; 
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxyO0WBTUimOZP3BiSVxMMnhwmpDCJkOr2Op6x2Kk13C6ACi4LiesuXc-nAvoWE2o8uRg/exec";
 
-        async function enviarDatos() {
-            const btn = document.getElementById('btn-cargar');
-            const cliente = document.getElementById('cliente');
-            const direccion = document.getElementById('direccion');
-            const valor = document.getElementById('valor');
+        window.onload = () => { actualizarDatos(); };
 
-            if(!cliente.value || !valor.value) return alert("Carga cliente y valor");
+        function cambiarPantalla(pantalla) {
+            document.getElementById('pantalla-carga').classList.toggle('hidden', pantalla !== 'carga');
+            document.getElementById('pantalla-ruta').classList.toggle('hidden', pantalla !== 'ruta');
+            document.getElementById('tab-carga').classList.toggle('tab-active', pantalla === 'carga');
+            document.getElementById('tab-ruta').classList.toggle('tab-active', pantalla === 'ruta');
+            if(pantalla === 'ruta') actualizarDatos();
+        }
 
-            btn.disabled = true;
-            btn.innerText = "CARGANDO...";
-
-            const datos = {
-                accion: "AGREGAR_VIAJE",
-                cliente: cliente.value,
-                direccion: direccion.value,
-                valor: valor.value
-            };
-
+        async function actualizarDatos() {
             try {
-                await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(datos) });
+                const res = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify({ accion: "OBTENER_DATOS_COMPLETOS" }) });
+                const data = await res.json();
                 
-                // REGLA: VACIADO AUTOMÁTICO
-                cliente.value = "";
-                direccion.value = "";
-                valor.value = "";
-                
-                alert("Ruta actualizada");
-                location.reload(); // Para refrescar la lista del Sheet
-            } catch (error) {
-                alert("Error al conectar");
-            } finally {
-                btn.disabled = false;
-                btn.innerText = "AÑADIR A LA RUTA";
-            }
+                // Actualizar Saldo
+                document.getElementById('saldo-hoy').innerText = `$${data.hoy.toLocaleString()}`;
+
+                // Renderizar Lista
+                const lista = document.getElementById('lista-viajes');
+                lista.innerHTML = "";
+
+                if(data.viajes.length === 0) {
+                    lista.innerHTML = '<p class="text-center text-gray-400 mt-10">No hay viajes cargados hoy.</p>';
+                    return;
+                }
+
+                data.viajes.forEach(v => {
+                    const card = document.createElement('div');
+                    card.className = `p-4 rounded-lg shadow-sm border-l-4 ${v.estado === 'LISTO' ? 'bg-gray-100 border-gray-400 opacity-60' : 'bg-white border-green-500'}`;
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h3 class="font-bold text-gray-800">${v.cliente}</h3>
+                                <p class="text-sm text-gray-600">${v.direccion}</p>
+                                <p class="text-green-700 font-bold mt-1">$${v.valor}</p>
+                            </div>
+                            ${v.estado !== 'LISTO' ? `<button onclick="marcarListo('${v.id}')" class="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-bold">MARCAR LISTO</button>` : '<span class="text-xs font-bold text-gray-500">✅ ENTREGADO</span>'}
+                        </div>
+                    `;
+                    lista.appendChild(card);
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        async function enviarComision() {
+            // ... (Tu función de envío actual se mantiene igual, solo agregá al final cambiarPantalla('ruta'))
+            // Copiá aquí la lógica de enviarComision que ya tenías
+            // pero al final, dentro del try, poné: cambiarPantalla('ruta');
         }
     </script>
 </body>
