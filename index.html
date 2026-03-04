@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sanchez Tracking</title>
+    <title>Sánchez Tracking</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
+        .card-listo { opacity: 0.6; background-color: #f3f4f6; border-left-color: #9ca3af !important; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen pb-20">
@@ -15,7 +16,7 @@
         <div class="p-4">
             <h1 class="text-xl font-bold italic">Sánchez Tracking</h1>
             <p id="saldo-header" class="text-2xl font-bold mt-1 text-yellow-300">$0</p>
-            <p class="text-[10px] uppercase opacity-80">Recaudación de Hoy</p>
+            <p class="text-[10px] uppercase opacity-80 font-bold">Recaudación de Hoy</p>
         </div>
         
         <div class="flex bg-green-700">
@@ -26,11 +27,11 @@
 
     <main id="pantalla-carga" class="p-4 max-w-md mx-auto">
         <div class="bg-white p-5 rounded-xl shadow-md border border-gray-200">
-            <h2 class="font-bold mb-4 text-gray-700">📦 Cargar Nueva Comisión</h2>
+            <h2 class="font-bold mb-4 text-gray-700">📦 Nueva Comisión</h2>
             <div class="space-y-3">
-                <input type="text" id="cliente" placeholder="Nombre del Cliente" class="w-full border p-3 rounded-lg outline-none">
-                <input type="text" id="direccion" placeholder="Dirección (Solo Chascomús)" class="w-full border p-3 rounded-lg outline-none">
-                <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none">
+                <input type="text" id="cliente" placeholder="Nombre del Cliente" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
+                <input type="text" id="direccion" placeholder="Dirección (Chascomús)" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
+                <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
                 <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md active:scale-95 transition">
                     AÑADIR A LA RUTA
                 </button>
@@ -40,12 +41,11 @@
 
     <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden">
         <div id="lista-viajes" class="space-y-3">
-            <p class="text-center text-gray-500 mt-10 italic">Cargando tu ruta del día...</p>
+            <p class="text-center text-gray-500 mt-10 italic">Cargando ruta...</p>
         </div>
     </main>
 
     <script>
-        // TU URL DE APPS SCRIPT
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxyO0WBTUimOZP3BiSVxMMnhwmpDCJkOr2Op6x2Kk13C6ACi4LiesuXc-nAvoWE2o8uRg/exec";
 
         window.onload = () => { actualizarTodo(); };
@@ -80,13 +80,10 @@
                     })
                 });
 
-                // REGLA: VACIAR CAMPOS TRAS ENVÍO
-                c.value = "";
-                d.value = "";
-                v.value = "";
-
-                alert("✅ Cargado con éxito");
-                cambiarPantalla('ruta'); // Te manda directo a la lista para ver el cambio
+                // REGLA: VACIAR CAMPOS
+                c.value = ""; d.value = ""; v.value = "";
+                
+                cambiarPantalla('ruta'); 
             } catch (e) {
                 alert("Error de conexión");
             } finally {
@@ -109,24 +106,36 @@
                 lista.innerHTML = "";
 
                 if(data.viajes.length === 0) {
-                    lista.innerHTML = '<p class="text-center text-gray-400 mt-10">Todavía no cargaste viajes hoy.</p>';
+                    lista.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No hay viajes hoy.</p>';
                     return;
                 }
 
                 data.viajes.forEach(v => {
+                    const esListo = v.estado === 'LISTO';
                     const card = document.createElement('div');
-                    card.className = "bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center";
+                    card.className = `bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center ${esListo ? 'card-listo' : ''}`;
                     card.innerHTML = `
                         <div>
                             <h3 class="font-bold text-gray-800">${v.cliente}</h3>
                             <p class="text-xs text-gray-500">${v.direccion || 'Sin dirección'}</p>
                             <p class="text-green-600 font-bold">$${v.valor}</p>
                         </div>
-                        <div class="text-xs font-bold text-gray-400">EN RUTA</div>
+                        ${esListo ? '<span class="text-xs font-bold text-gray-400">✅ OK</span>' : 
+                        `<button onclick="marcarListo('${v.id}')" class="bg-green-100 text-green-700 px-3 py-2 rounded-lg text-xs font-bold active:scale-90 transition">LISTO</button>`}
                     `;
                     lista.appendChild(card);
                 });
-            } catch (e) { console.error("Error al actualizar:", e); }
+            } catch (e) { console.error(e); }
+        }
+
+        async function marcarListo(id) {
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ accion: "COMPLETAR_VIAJE", id: id })
+                });
+                actualizarTodo();
+            } catch (e) { alert("Error al marcar"); }
         }
     </script>
 </body>
