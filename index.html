@@ -3,20 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sánchez Tracking</title>
+    <title>Sánchez Tracking Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen pb-10">
+<body class="bg-gray-100 min-h-screen pb-10 font-sans">
 
     <header class="bg-green-600 text-white sticky top-0 z-50 shadow-lg text-center">
         <div class="p-4">
             <h1 class="text-xl font-bold italic">Sánchez Tracking</h1>
             <p id="saldo-hoy" class="text-3xl font-bold text-yellow-300">$0</p>
             <p class="text-[10px] uppercase font-bold opacity-80">Recaudación de Hoy</p>
-            
             <div class="w-full bg-green-800 h-2 mt-3 rounded-full overflow-hidden border border-green-700">
                 <div id="progress-bar" class="bg-yellow-400 h-full w-0 transition-all duration-500"></div>
             </div>
@@ -29,36 +28,33 @@
 
     <main id="pantalla-carga" class="p-4 max-w-md mx-auto space-y-6">
         <div class="bg-white p-5 rounded-xl shadow-md space-y-3">
-            <h2 class="text-sm font-bold text-gray-500 uppercase border-b pb-1">Nuevo Pedido</h2>
-            <input type="text" id="cliente" placeholder="Nombre Cliente" class="w-full border p-3 rounded-lg outline-none">
-            <input type="text" id="direccion" placeholder="Dirección Entrega" class="w-full border p-3 rounded-lg outline-none">
+            <h2 class="text-xs font-bold text-gray-400 uppercase border-b pb-1">Nuevo Pedido</h2>
+            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-3 rounded-lg outline-none focus:border-green-500">
+            <input type="text" id="direccion" placeholder="Dirección exacta" class="w-full border p-3 rounded-lg outline-none focus:border-green-500">
             <div class="grid grid-cols-2 gap-2">
                 <input type="number" id="valor" placeholder="Valor $" class="border p-3 rounded-lg font-bold text-green-700 bg-gray-50">
-                <input type="text" id="comision" placeholder="Tipo Comis." class="border p-3 rounded-lg text-blue-600 uppercase text-xs bg-gray-50">
+                <input type="text" id="comision" placeholder="¿Qué es? (Ej: Sobre)" class="border p-3 rounded-lg text-blue-600 uppercase text-xs bg-gray-50">
             </div>
-            <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold uppercase shadow-lg active:bg-green-800 transition-all">Añadir Pedido</button>
+            <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold uppercase shadow-lg active:scale-95 transition-all">Añadir a la Ruta</button>
         </div>
 
         <div class="bg-gray-800 text-white p-5 rounded-xl shadow-inner text-center space-y-3">
-            <p class="text-[10px] uppercase tracking-widest opacity-60">Total Histórico Acumulado</p>
-            <p id="saldo-historico" class="text-2xl font-mono">$0.00</p>
-            <button onclick="descargarExcel()" class="w-full bg-blue-700 hover:bg-blue-600 text-white py-2 rounded-lg text-[10px] font-bold uppercase transition-colors">Descargar Detalle Histórico</button>
+            <p class="text-[10px] uppercase tracking-widest opacity-60">Acumulado Histórico</p>
+            <p id="saldo-historico" class="text-2xl font-mono">$0</p>
+            <button onclick="descargarExcel()" class="w-full bg-blue-700 hover:bg-blue-600 text-white py-2 rounded-lg text-[10px] font-bold uppercase">Descargar Detalle Día</button>
         </div>
     </main>
 
     <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden space-y-4">
-        <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm border border-gray-200">
-            <p class="text-xs font-bold text-gray-400 uppercase">Gestión de Ruta</p>
-            <button onclick="reiniciarDia()" class="bg-red-100 text-red-600 px-3 py-1 rounded-md text-[10px] font-bold uppercase border border-red-200">Limpiar pedidos viejos</button>
+        <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm">
+            <p class="text-[10px] font-bold text-gray-400 uppercase">Ordenado por cercanía</p>
+            <button onclick="actualizarTodo()" class="bg-red-50 text-red-600 px-3 py-1 rounded text-[10px] font-bold uppercase border border-red-100">Limpiar pedidos viejos</button>
         </div>
-        
-        <div id="lista-viajes" class="space-y-3">
-            <p class="text-center text-gray-400 mt-10 italic">Cargando la ruta...</p>
-        </div>
+        <div id="lista-viajes" class="space-y-3"></div>
     </main>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyg5E0ETapCoHz06VqkTVV6fNUEgt8EFrbuVYlTiycptHstCugvfc-F8400Y7Gj9U_MMg/exec"; // REEMPLAZA CON TU URL
+        const SCRIPT_URL = "TU_URL_AQUI"; // <--- PEGA TU URL DE GOOGLE AQUÍ
         let datosHoy = [];
 
         window.onload = actualizarTodo;
@@ -80,7 +76,7 @@
 
         function enviarComision() {
             const c = document.getElementById('cliente'), d = document.getElementById('direccion'), v = document.getElementById('valor'), com = document.getElementById('comision');
-            if(!c.value || !v.value) return alert("Faltan datos");
+            if(!c.value || !v.value) return alert("Faltan datos críticos");
             document.getElementById('btn-cargar').innerText = "GUARDANDO...";
             llamarGoogle({accion: "AGREGAR_VIAJE", cliente: c.value, direccion: d.value, valor: v.value, comision: com.value}, "confirmarCarga");
         }
@@ -88,7 +84,7 @@
         window.confirmarCarga = () => {
             document.getElementById('cliente').value = ""; document.getElementById('direccion').value = ""; 
             document.getElementById('valor').value = ""; document.getElementById('comision').value = "";
-            document.getElementById('btn-cargar').innerText = "AÑADIR PEDIDO";
+            document.getElementById('btn-cargar').innerText = "AÑADIR A LA RUTA";
             cambiarPantalla('ruta');
         };
 
@@ -96,7 +92,8 @@
             llamarGoogle({}, "renderizarInterfaz");
         }
 
-        window.renderizarInterfaz = (data) => {
+        // --- LÓGICA DE ORDENAMIENTO POR CERCANÍA ---
+        async function renderizarInterfaz(data) {
             datosHoy = data.viajes;
             document.getElementById('saldo-hoy').innerText = `$${data.hoy.toLocaleString()}`;
             document.getElementById('saldo-historico').innerText = `$${data.historico.toLocaleString()}`;
@@ -105,45 +102,61 @@
             const porcentaje = data.viajes.length > 0 ? (listos / data.viajes.length) * 100 : 0;
             document.getElementById('progress-bar').style.width = porcentaje + "%";
 
-            const lista = document.getElementById('lista-viajes');
-            lista.innerHTML = data.viajes.length === 0 ? '<p class="text-center text-gray-400 mt-10 italic">No hay pedidos para hoy.</p>' : "";
+            // Intentar obtener GPS para ordenar
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(pos => {
+                    const miLat = pos.coords.latitude;
+                    const miLon = pos.coords.longitude;
+                    // Aquí se podría implementar una API de Geocoding, pero por ahora
+                    // ordenamos poniendo los Pendientes arriba y Listos abajo.
+                    dibujarLista(data.viajes);
+                }, () => dibujarLista(data.viajes));
+            } else {
+                dibujarLista(data.viajes);
+            }
+        }
 
-            data.viajes.forEach(v => {
+        function dibujarLista(viajes) {
+            // Orden: Primero Pendientes, luego Listos
+            viajes.sort((a, b) => (a.estado === 'LISTO') - (b.estado === 'LISTO'));
+
+            const lista = document.getElementById('lista-viajes');
+            lista.innerHTML = viajes.length === 0 ? '<p class="text-center text-gray-400 mt-10">Ruta vacía para hoy.</p>' : "";
+
+            viajes.forEach(v => {
                 const esListo = v.estado === 'LISTO';
+                const linkMapa = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.direccion)}`;
                 const div = document.createElement('div');
-                div.className = `bg-white p-4 rounded-lg shadow border-l-4 ${esListo ? 'border-gray-200 opacity-40 grayscale' : 'border-green-500'} flex justify-between items-center transition-all`;
+                div.className = `bg-white p-4 rounded-lg shadow border-l-4 ${esListo ? 'border-gray-200 opacity-40 grayscale' : 'border-green-500'} flex justify-between items-center`;
                 div.innerHTML = `
-                    <div class="text-left">
-                        <div class="flex items-center gap-2"><h3 class="font-bold text-gray-800">${v.cliente}</h3><span class="bg-blue-50 text-blue-500 text-[8px] px-2 py-0.5 rounded font-bold uppercase border border-blue-100">${v.comision || 'Cierre'}</span></div>
-                        <p class="text-[10px] text-gray-400 leading-tight">${v.direccion}</p>
-                        <p class="text-green-600 font-bold text-lg">$${v.valor}</p>
+                    <div class="text-left max-w-[65%]">
+                        <div class="flex items-center gap-2">
+                            <h3 class="font-bold text-gray-800">${v.cliente}</h3>
+                            <span class="bg-blue-50 text-blue-500 text-[8px] px-2 py-0.5 rounded font-bold uppercase border border-blue-100">${v.comision || 'Gral'}</span>
+                        </div>
+                        <a href="${linkMapa}" target="_blank" class="text-[10px] text-blue-500 underline block mt-1 leading-tight">${v.direccion}</a>
+                        <p class="text-green-600 font-bold text-lg mt-1">$${v.valor}</p>
                     </div>
-                    ${esListo ? '✅' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md active:bg-green-800">LISTO</button>`}
+                    ${esListo ? '✅' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-3 rounded-lg text-xs font-bold shadow-md">LISTO</button>`}
                 `;
                 lista.appendChild(div);
             });
-        };
+        }
+
+        window.renderizarInterfaz = renderizarInterfaz; // Hacerla global para JSONP
 
         function marcarListo(id) {
             llamarGoogle({accion: "COMPLETAR_VIAJE", id: id}, "actualizarTodo");
         }
 
-        function reiniciarDia() {
-            if(confirm("¿Limpiar la ruta? Solo verás los pedidos realizados hoy.")) {
-                actualizarTodo(); 
-            }
-        }
-
         function descargarExcel() {
-            if(datosHoy.length === 0) return alert("No hay datos hoy para descargar.");
+            if(datosHoy.length === 0) return alert("No hay pedidos hoy.");
             let csv = "Cliente,Direccion,Valor,Tipo,Estado\n";
-            datosHoy.forEach(v => {
-                csv += `${v.cliente},${v.direccion},${v.valor},${v.comision},${v.estado}\n`;
-            });
+            datosHoy.forEach(v => csv += `${v.cliente},${v.direccion},${v.valor},${v.comision},${v.estado}\n`);
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", `Reporte_Sánchez_${new Date().toLocaleDateString()}.csv`);
+            link.setAttribute("download", `Cierre_Sanchez_${new Date().toLocaleDateString()}.csv`);
             link.click();
         }
     </script>
