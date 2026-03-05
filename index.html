@@ -17,7 +17,7 @@
         <div class="p-4">
             <h1 class="text-xl font-bold italic">Sánchez Tracking</h1>
             <p id="saldo-hoy" class="text-3xl font-bold text-yellow-300">$0</p>
-            <p class="text-[10px] uppercase font-bold opacity-80">Hoy</p>
+            <p class="text-[10px] uppercase font-bold opacity-80 italic">Ingreso Bruto Hoy</p>
             <div class="w-full bg-green-800 h-2 mt-3 rounded-full overflow-hidden border border-green-700">
                 <div id="progress-bar" class="bg-yellow-400 h-full w-0 transition-all duration-500"></div>
             </div>
@@ -28,37 +28,42 @@
         </div>
     </header>
 
-    <main id="pantalla-carga" class="p-4 max-w-md mx-auto space-y-6">
-        <div class="bg-white p-5 rounded-xl shadow-md space-y-3">
-            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-3 rounded-lg outline-none">
-            <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-3 rounded-lg outline-none">
+    <main id="pantalla-carga" class="p-4 max-w-md mx-auto space-y-4">
+        <div class="bg-white p-5 rounded-xl shadow-md space-y-3 border-t-4 border-green-500">
+            <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">📦 Nuevo Pedido</h2>
+            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-2 rounded-lg outline-none">
+            <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-2 rounded-lg outline-none">
             <div class="grid grid-cols-2 gap-2">
-                <input type="number" id="valor" placeholder="Importe $" class="border p-3 rounded-lg font-bold text-green-700 bg-gray-50">
-                <input type="text" id="comision" placeholder="Comisión (Qué es)" class="border p-3 rounded-lg text-blue-600 uppercase text-xs bg-gray-50">
+                <input type="number" id="valor" placeholder="Importe $" class="border p-2 rounded-lg font-bold text-green-700">
+                <input type="text" id="comision" placeholder="Comisión" class="border p-2 rounded-lg text-blue-600 text-xs">
             </div>
-            <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold uppercase shadow-lg active:scale-95 transition-all">Añadir a la Ruta</button>
+            <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold uppercase shadow active:scale-95 transition-all">Añadir a la Ruta</button>
+        </div>
+
+        <div class="bg-white p-5 rounded-xl shadow-md space-y-3 border-t-4 border-orange-400">
+            <h2 class="text-[10px] font-bold text-gray-400 uppercase tracking-tighter">⛽ Carga de Combustible</h2>
+            <div class="grid grid-cols-2 gap-2">
+                <input type="number" id="gas-importe" placeholder="Importe $" class="border p-2 rounded-lg font-bold text-orange-600 bg-orange-50">
+                <input type="number" id="gas-litros" placeholder="Litros" class="border p-2 rounded-lg text-orange-600 text-xs bg-orange-50">
+            </div>
+            <button onclick="enviarNafta()" id="btn-nafta" class="w-full bg-orange-500 text-white py-2 rounded-xl font-bold uppercase text-xs active:bg-orange-700">Registrar Carga</button>
         </div>
 
         <div class="bg-gray-800 text-white p-5 rounded-xl shadow-inner text-center space-y-3">
-            <p class="text-[10px] uppercase tracking-widest opacity-60">Histórico Total</p>
+            <p class="text-[10px] uppercase opacity-60">Acumulado Histórico</p>
             <p id="saldo-historico" class="text-2xl font-mono">$0</p>
-            <button onclick="generarPDF()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-[10px] font-bold uppercase flex items-center justify-center gap-2">
-                Descargar PDF del Día
-            </button>
+            <button onclick="generarPDF()" class="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg text-[10px] font-bold uppercase">Descargar Cierre PDF</button>
         </div>
     </main>
 
     <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden space-y-4">
-        <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm border">
-            <p class="text-[10px] font-bold text-gray-400 uppercase">Estado de Ruta</p>
-            <button onclick="limpiarViejos()" id="btn-limpiar" class="bg-red-50 text-red-600 px-3 py-1 rounded text-[10px] font-bold uppercase border border-red-200 active:bg-red-200">Limpiar pedidos viejos</button>
-        </div>
         <div id="lista-viajes" class="space-y-3"></div>
     </main>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyg5E0ETapCoHz06VqkTVV6fNUEgt8EFrbuVYlTiycptHstCugvfc-F8400Y7Gj9U_MMg/exec"; // REEMPLAZA ESTO
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyg5E0ETapCoHz06VqkTVV6fNUEgt8EFrbuVYlTiycptHstCugvfc-F8400Y7Gj9U_MMg/exec"; 
         let datosHoy = [];
+        let gastoNaftaHoy = 0;
 
         window.onload = actualizarTodo;
 
@@ -84,25 +89,33 @@
             llamarGoogle({accion: "AGREGAR_VIAJE", cliente: c.value, direccion: d.value, valor: v.value, comision: com.value}, "confirmarCarga");
         }
 
+        function enviarNafta() {
+            const imp = document.getElementById('gas-importe'), lit = document.getElementById('gas-litros');
+            if(!imp.value) return alert("Ingresá el importe de la nafta");
+            document.getElementById('btn-nafta').innerText = "REGISTRANDO...";
+            llamarGoogle({accion: "CARGAR_NAFTA", importe: imp.value, litros: lit.value || 0}, "confirmarNafta");
+        }
+
         window.confirmarCarga = () => {
-            document.getElementById('cliente').value = ""; document.getElementById('direccion').value = ""; 
-            document.getElementById('valor').value = ""; document.getElementById('comision').value = "";
-            document.getElementById('btn-cargar').innerText = "AÑADIR A LA RUTA";
+            document.querySelectorAll('#pantalla-carga input').forEach(i => i.value = "");
+            document.getElementById('btn-cargar').innerText = "Añadir a la Ruta";
             cambiarPantalla('ruta');
+        };
+
+        window.confirmarNafta = () => {
+            document.getElementById('gas-importe').value = ""; document.getElementById('gas-litros').value = "";
+            document.getElementById('btn-nafta').innerText = "Registrar Carga";
+            alert("Combustible registrado con éxito");
+            actualizarTodo();
         };
 
         function actualizarTodo() {
             llamarGoogle({}, "renderizarInterfaz");
         }
 
-        function limpiarViejos() {
-            if(!confirm("Se quitarán de la lista los pedidos pendientes de días anteriores.")) return;
-            document.getElementById('btn-limpiar').innerText = "LIMPIANDO...";
-            llamarGoogle({accion: "LIMPIAR_VIEJOS"}, "actualizarTodo");
-        }
-
         window.renderizarInterfaz = (data) => {
             datosHoy = data.viajes;
+            gastoNaftaHoy = data.nafta || 0;
             document.getElementById('saldo-hoy').innerText = `$${data.hoy.toLocaleString()}`;
             document.getElementById('saldo-historico').innerText = `$${data.historico.toLocaleString()}`;
             
@@ -111,26 +124,21 @@
             document.getElementById('progress-bar').style.width = porcentaje + "%";
 
             const lista = document.getElementById('lista-viajes');
-            lista.innerHTML = data.viajes.length === 0 ? '<p class="text-center text-gray-400 mt-10">Sin pedidos para hoy.</p>' : "";
-
+            lista.innerHTML = "";
             data.viajes.sort((a, b) => (a.estado === 'LISTO') - (b.estado === 'LISTO')).forEach(v => {
                 const esListo = v.estado === 'LISTO';
                 const div = document.createElement('div');
                 div.className = `bg-white p-4 rounded-lg shadow border-l-4 ${esListo ? 'border-gray-200 opacity-40 grayscale' : 'border-green-500'} flex justify-between items-center`;
                 div.innerHTML = `
-                    <div class="text-left max-w-[65%]">
-                        <div class="flex items-center gap-2">
-                            <h3 class="font-bold text-gray-800 uppercase text-sm">${v.cliente}</h3>
-                            <span class="bg-blue-50 text-blue-500 text-[9px] px-2 py-0.5 rounded font-bold uppercase border border-blue-100">${v.comision || 'Gral'}</span>
-                        </div>
-                        <p class="text-[10px] text-gray-400 mt-1">${v.direccion}</p>
-                        <p class="text-green-600 font-bold text-lg">$${v.valor}</p>
+                    <div class="text-left">
+                        <h3 class="font-bold text-gray-800 uppercase text-xs">${v.cliente}</h3>
+                        <p class="text-[10px] text-gray-400">${v.direccion}</p>
+                        <p class="text-green-600 font-bold">$${v.valor}</p>
                     </div>
-                    ${esListo ? '✅' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-3 rounded-lg text-xs font-bold shadow active:bg-green-800">LISTO</button>`}
+                    ${esListo ? '✅' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow">LISTO</button>`}
                 `;
                 lista.appendChild(div);
             });
-            document.getElementById('btn-limpiar').innerText = "Limpiar pedidos viejos";
         };
 
         function marcarListo(id) {
@@ -138,30 +146,36 @@
         }
 
         function generarPDF() {
-            if(datosHoy.length === 0) return alert("No hay datos hoy.");
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
             const fecha = new Date().toLocaleDateString();
             
-            doc.setFontSize(18);
-            doc.text("Sánchez Tracking - Reporte Diario", 14, 20);
-            doc.setFontSize(11);
-            doc.text(`Fecha: ${fecha}`, 14, 30);
+            doc.text("Sánchez Tracking - Cierre de Caja", 14, 20);
+            doc.setFontSize(10);
+            doc.text(`Fecha: ${fecha}`, 14, 28);
 
-            const tableData = datosHoy.map(v => [v.cliente, v.comision, v.direccion, `$${v.valor}`]);
-            const total = datosHoy.reduce((acc, curr) => acc + parseFloat(curr.valor), 0);
+            const tableData = datosHoy.map(v => [v.cliente, v.comision, `$${v.valor}`]);
+            const totalBruto = datosHoy.reduce((acc, curr) => acc + parseFloat(curr.valor), 0);
+            const neto = totalBruto - gastoNaftaHoy;
 
             doc.autoTable({
-                startY: 40,
-                head: [['Cliente', 'Comisión', 'Dirección', 'Importe']],
+                startY: 35,
+                head: [['Cliente', 'Tipo', 'Importe']],
                 body: tableData,
-                foot: [['', '', 'TOTAL DEL DÍA', `$${total.toLocaleString()}`]],
                 theme: 'striped',
-                headStyles: { fillColor: [21, 128, 61] },
-                footStyles: { fillColor: [253, 224, 71], textColor: [0, 0, 0], fontStyle: 'bold' }
+                headStyles: { fillColor: [21, 128, 61] }
             });
 
-            doc.save(`Sanchez_Reporte_${fecha}.pdf`);
+            const finalY = doc.lastAutoTable.finalY + 10;
+            doc.setFontSize(12);
+            doc.text(`Recaudación Bruta: $${totalBruto.toLocaleString()}`, 14, finalY);
+            doc.setTextColor(200, 0, 0);
+            doc.text(`Gasto Combustible: -$${gastoNaftaHoy.toLocaleString()}`, 14, finalY + 7);
+            doc.setTextColor(0, 100, 0);
+            doc.setFontSize(14);
+            doc.text(`TOTAL NETO A CAJA: $${neto.toLocaleString()}`, 14, finalY + 17);
+
+            doc.save(`Cierre_${fecha}.pdf`);
         }
     </script>
 </body>
