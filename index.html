@@ -7,7 +7,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
-        #progress-bar { transition: width 0.5s ease-in-out; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen pb-10">
@@ -15,9 +14,11 @@
     <header class="bg-green-600 text-white sticky top-0 z-50 shadow-lg text-center">
         <div class="p-4">
             <h1 class="text-xl font-bold italic">Sánchez Tracking</h1>
-            <p id="saldo-header" class="text-2xl font-bold text-yellow-300">$0</p>
-            <div class="w-full bg-green-800 h-2 mt-2 rounded-full overflow-hidden border border-green-700">
-                <div id="progress-bar" class="bg-red-500 h-full w-0"></div>
+            <p id="saldo-hoy" class="text-3xl font-bold text-yellow-300">$0</p>
+            <p class="text-[10px] uppercase font-bold opacity-80">Recaudación de Hoy</p>
+            
+            <div class="w-full bg-green-800 h-2 mt-3 rounded-full overflow-hidden border border-green-700">
+                <div id="progress-bar" class="bg-yellow-400 h-full w-0 transition-all duration-500"></div>
             </div>
         </div>
         <div class="flex bg-green-700">
@@ -26,30 +27,39 @@
         </div>
     </header>
 
-    <main id="pantalla-carga" class="p-4 max-w-md mx-auto space-y-4">
+    <main id="pantalla-carga" class="p-4 max-w-md mx-auto space-y-6">
         <div class="bg-white p-5 rounded-xl shadow-md space-y-3">
-            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-3 rounded-lg outline-none">
-            <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-3 rounded-lg outline-none">
+            <h2 class="text-sm font-bold text-gray-500 uppercase border-b pb-1">Nuevo Pedido</h2>
+            <input type="text" id="cliente" placeholder="Nombre Cliente" class="w-full border p-3 rounded-lg outline-none">
+            <input type="text" id="direccion" placeholder="Dirección Entrega" class="w-full border p-3 rounded-lg outline-none">
             <div class="grid grid-cols-2 gap-2">
-                <input type="number" id="valor" placeholder="Valor $" class="border p-3 rounded-lg font-bold text-green-700">
-                <input type="text" id="comision" placeholder="¿Qué es?" class="border p-3 rounded-lg text-blue-600 uppercase text-xs">
+                <input type="number" id="valor" placeholder="Valor $" class="border p-3 rounded-lg font-bold text-green-700 bg-gray-50">
+                <input type="text" id="comision" placeholder="Tipo Comis." class="border p-3 rounded-lg text-blue-600 uppercase text-xs bg-gray-50">
             </div>
-            <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold uppercase active:bg-green-800">Añadir Pedido</button>
+            <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold uppercase shadow-lg active:bg-green-800 transition-all">Añadir Pedido</button>
         </div>
 
-        <div class="grid grid-cols-2 gap-3">
-            <button onclick="descargarExcel()" class="bg-blue-600 text-white py-3 rounded-lg text-xs font-bold uppercase shadow">Descargar Día</button>
-            <button onclick="reiniciarDia()" class="bg-red-600 text-white py-3 rounded-lg text-xs font-bold uppercase shadow">Reiniciar Día</button>
+        <div class="bg-gray-800 text-white p-5 rounded-xl shadow-inner text-center space-y-3">
+            <p class="text-[10px] uppercase tracking-widest opacity-60">Total Histórico Acumulado</p>
+            <p id="saldo-historico" class="text-2xl font-mono">$0.00</p>
+            <button onclick="descargarExcel()" class="w-full bg-blue-700 hover:bg-blue-600 text-white py-2 rounded-lg text-[10px] font-bold uppercase transition-colors">Descargar Detalle Histórico</button>
         </div>
     </main>
 
-    <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden">
-        <div id="lista-viajes" class="space-y-3 italic text-gray-400 text-center mt-10">Cargando...</div>
+    <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden space-y-4">
+        <div class="flex justify-between items-center bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+            <p class="text-xs font-bold text-gray-400 uppercase">Gestión de Ruta</p>
+            <button onclick="reiniciarDia()" class="bg-red-100 text-red-600 px-3 py-1 rounded-md text-[10px] font-bold uppercase border border-red-200">Limpiar pedidos viejos</button>
+        </div>
+        
+        <div id="lista-viajes" class="space-y-3">
+            <p class="text-center text-gray-400 mt-10 italic">Cargando la ruta...</p>
+        </div>
     </main>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyg5E0ETapCoHz06VqkTVV6fNUEgt8EFrbuVYlTiycptHstCugvfc-F8400Y7Gj9U_MMg/exec"; // REEMPLAZA ESTO
-        let datosLocales = [];
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyg5E0ETapCoHz06VqkTVV6fNUEgt8EFrbuVYlTiycptHstCugvfc-F8400Y7Gj9U_MMg/exec"; // REEMPLAZA CON TU URL
+        let datosHoy = [];
 
         window.onload = actualizarTodo;
 
@@ -61,7 +71,6 @@
             if(p === 'ruta') actualizarTodo();
         }
 
-        // --- CONEXIÓN ULTRA-ESTABLE (JSONP) ---
         function llamarGoogle(params, callbackName) {
             const script = document.createElement('script');
             const queryString = Object.keys(params).map(key => key + '=' + encodeURIComponent(params[key])).join('&');
@@ -72,12 +81,8 @@
         function enviarComision() {
             const c = document.getElementById('cliente'), d = document.getElementById('direccion'), v = document.getElementById('valor'), com = document.getElementById('comision');
             if(!c.value || !v.value) return alert("Faltan datos");
-
             document.getElementById('btn-cargar').innerText = "GUARDANDO...";
-            llamarGoogle({
-                accion: "AGREGAR_VIAJE",
-                cliente: c.value, direccion: d.value, valor: v.value, comision: com.value
-            }, "confirmarCarga");
+            llamarGoogle({accion: "AGREGAR_VIAJE", cliente: c.value, direccion: d.value, valor: v.value, comision: com.value}, "confirmarCarga");
         }
 
         window.confirmarCarga = () => {
@@ -88,30 +93,32 @@
         };
 
         function actualizarTodo() {
-            llamarGoogle({}, "renderizarLista");
+            llamarGoogle({}, "renderizarInterfaz");
         }
 
-        window.renderizarLista = (data) => {
-            datosLocales = data.viajes;
-            document.getElementById('saldo-header').innerText = `$${data.hoy.toLocaleString()}`;
+        window.renderizarInterfaz = (data) => {
+            datosHoy = data.viajes;
+            document.getElementById('saldo-hoy').innerText = `$${data.hoy.toLocaleString()}`;
+            document.getElementById('saldo-historico').innerText = `$${data.historico.toLocaleString()}`;
             
             const listos = data.viajes.filter(v => v.estado === 'LISTO').length;
             const porcentaje = data.viajes.length > 0 ? (listos / data.viajes.length) * 100 : 0;
             document.getElementById('progress-bar').style.width = porcentaje + "%";
 
             const lista = document.getElementById('lista-viajes');
-            lista.innerHTML = data.viajes.length === 0 ? "No hay pedidos hoy." : "";
+            lista.innerHTML = data.viajes.length === 0 ? '<p class="text-center text-gray-400 mt-10 italic">No hay pedidos para hoy.</p>' : "";
 
             data.viajes.forEach(v => {
                 const esListo = v.estado === 'LISTO';
                 const div = document.createElement('div');
-                div.className = `bg-white p-4 rounded-lg shadow border-l-4 ${esListo ? 'border-gray-300 opacity-50 grayscale' : 'border-green-500'} flex justify-between items-center`;
+                div.className = `bg-white p-4 rounded-lg shadow border-l-4 ${esListo ? 'border-gray-200 opacity-40 grayscale' : 'border-green-500'} flex justify-between items-center transition-all`;
                 div.innerHTML = `
                     <div class="text-left">
-                        <div class="flex items-center gap-2"><h3 class="font-bold text-gray-800">${v.cliente}</h3><span class="bg-blue-100 text-blue-600 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">${v.comision || 'Cierre'}</span></div>
-                        <p class="text-[11px] text-gray-500">${v.direccion}</p><p class="text-green-600 font-bold">$${v.valor}</p>
+                        <div class="flex items-center gap-2"><h3 class="font-bold text-gray-800">${v.cliente}</h3><span class="bg-blue-50 text-blue-500 text-[8px] px-2 py-0.5 rounded font-bold uppercase border border-blue-100">${v.comision || 'Cierre'}</span></div>
+                        <p class="text-[10px] text-gray-400 leading-tight">${v.direccion}</p>
+                        <p class="text-green-600 font-bold text-lg">$${v.valor}</p>
                     </div>
-                    ${esListo ? '✅' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded text-xs font-bold shadow">LISTO</button>`}
+                    ${esListo ? '✅' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md active:bg-green-800">LISTO</button>`}
                 `;
                 lista.appendChild(div);
             });
@@ -122,21 +129,21 @@
         }
 
         function reiniciarDia() {
-            if(confirm("¿Seguro? Se limpiará la pantalla de hoy (los datos ya están en el Excel).")) {
-                location.reload(); 
+            if(confirm("¿Limpiar la ruta? Solo verás los pedidos realizados hoy.")) {
+                actualizarTodo(); 
             }
         }
 
         function descargarExcel() {
-            if(datosLocales.length === 0) return alert("No hay datos para descargar.");
+            if(datosHoy.length === 0) return alert("No hay datos hoy para descargar.");
             let csv = "Cliente,Direccion,Valor,Tipo,Estado\n";
-            datosLocales.forEach(v => {
+            datosHoy.forEach(v => {
                 csv += `${v.cliente},${v.direccion},${v.valor},${v.comision},${v.estado}\n`;
             });
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
-            link.setAttribute("download", `Sanchez_Tracking_${new Date().toLocaleDateString()}.csv`);
+            link.setAttribute("download", `Reporte_Sánchez_${new Date().toLocaleDateString()}.csv`);
             link.click();
         }
     </script>
