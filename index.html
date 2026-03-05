@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
-        #progress-bar { transition: width 0.5s ease-in-out; }
+        #progress-bar { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -17,10 +17,10 @@
             <h1 class="text-xl font-bold italic">Sánchez Tracking</h1>
             <p id="saldo-header" class="text-2xl font-bold text-yellow-300">$0</p>
             
-            <div class="w-full bg-green-800 h-2 mt-3 rounded-full overflow-hidden">
-                <div id="progress-bar" class="bg-yellow-400 h-full" style="width: 0%"></div>
+            <div class="w-full bg-green-800 h-3 mt-3 rounded-full overflow-hidden border border-green-700">
+                <div id="progress-bar" class="bg-red-500 h-full" style="width: 0%"></div>
             </div>
-            <p id="stats-text" class="text-[10px] uppercase mt-1 opacity-80">0 de 0 completados</p>
+            <p id="stats-text" class="text-[10px] uppercase mt-1 font-bold opacity-90">0 de 0 completados</p>
         </div>
         
         <div class="flex bg-green-700">
@@ -30,21 +30,26 @@
     </header>
 
     <main id="pantalla-carga" class="p-4 max-w-md mx-auto">
-        <div class="bg-white p-5 rounded-xl shadow-md space-y-4">
+        <div class="bg-white p-5 rounded-xl shadow-md space-y-4 border border-gray-200">
+            <h2 class="font-bold text-gray-600 border-b pb-2">📦 Cargar Pedido</h2>
             <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
             <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
-            <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none font-bold text-green-700 text-xl">
+            <div class="grid grid-cols-2 gap-3">
+                <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none font-bold text-green-700">
+                <input type="number" id="comision" placeholder="Comisión $" class="w-full border p-3 rounded-lg outline-none font-bold text-blue-600">
+            </div>
             <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md active:scale-95 transition uppercase">Añadir a la Ruta</button>
         </div>
     </main>
 
     <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden">
         <div id="lista-viajes" class="space-y-3">
-            </div>
+            <p class="text-center text-gray-400 mt-10 italic">Cargando pedidos...</p>
+        </div>
     </main>
 
     <script>
-        const SCRIPT_URL = "TU_URL_DE_APPS_SCRIPT_AQUI"; // REEMPLAZA CON TU URL
+        const SCRIPT_URL = "TU_URL_DE_APPS_SCRIPT_AQUI"; // REEMPLAZA ESTO
 
         window.onload = actualizarTodo;
 
@@ -60,23 +65,28 @@
             const c = document.getElementById('cliente');
             const d = document.getElementById('direccion');
             const v = document.getElementById('valor');
-            if(!c.value || !v.value) return;
+            const com = document.getElementById('comision');
+
+            if(!c.value || !v.value) return alert("Cliente y Valor son obligatorios");
 
             const btn = document.getElementById('btn-cargar');
             btn.innerText = "GUARDANDO...";
             btn.disabled = true;
 
-            // Envío por URL (más rápido)
-            const url = `${SCRIPT_URL}?accion=AGREGAR_VIAJE&cliente=${encodeURIComponent(c.value)}&direccion=${encodeURIComponent(d.value)}&valor=${v.value}`;
+            const url = `${SCRIPT_URL}?accion=AGREGAR_VIAJE&cliente=${encodeURIComponent(c.value)}&direccion=${encodeURIComponent(d.value)}&valor=${v.value}&comision=${com.value || 0}`;
             
-            new Image().src = url; // Envío "fuego y olvido"
-
-            setTimeout(() => {
-                c.value = ""; d.value = ""; v.value = "";
-                btn.innerText = "Añadir a la Ruta";
+            // Usamos fetch directo para asegurar que se procese antes de cambiar de pantalla
+            try {
+                await fetch(url, { mode: 'no-cors' });
+                c.value = ""; d.value = ""; v.value = ""; com.value = "";
+                btn.innerText = "AÑADIR A LA RUTA";
                 btn.disabled = false;
-                cambiarPantalla('ruta');
-            }, 600);
+                cambiarPantalla('ruta'); // Esto llama a actualizarTodo() automáticamente
+            } catch(e) {
+                alert("Error al guardar. Reintentá.");
+                btn.disabled = false;
+                btn.innerText = "AÑADIR A LA RUTA";
+            }
         }
 
         async function actualizarTodo() {
@@ -86,30 +96,40 @@
                 
                 document.getElementById('saldo-header').innerText = `$${data.hoy.toLocaleString()}`;
                 
-                // Actualizar Línea de Vida
+                // LÓGICA LÍNEA DE VIDA CON COLORES
                 const total = data.viajes.length;
                 const listos = data.viajes.filter(v => v.estado === 'LISTO').length;
                 const porcentaje = total > 0 ? (listos / total) * 100 : 0;
                 
-                document.getElementById('progress-bar').style.width = porcentaje + "%";
+                const bar = document.getElementById('progress-bar');
+                bar.style.width = porcentaje + "%";
+                
+                // Cambiar color según progreso
+                if(porcentaje < 40) bar.className = "bg-red-500 h-full transition-all";
+                else if(porcentaje < 80) bar.className = "bg-yellow-400 h-full transition-all";
+                else bar.className = "bg-green-400 h-full transition-all";
+
                 document.getElementById('stats-text').innerText = `${listos} de ${total} completados`;
 
                 const lista = document.getElementById('lista-viajes');
-                lista.innerHTML = "";
+                lista.innerHTML = total === 0 ? '<p class="text-center text-gray-400 mt-10">No hay pedidos hoy.</p>' : "";
 
                 data.viajes.forEach(v => {
                     const esListo = v.estado === 'LISTO';
                     const div = document.createElement('div');
                     div.id = `card-${v.id}`;
-                    div.className = `bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center transition-all ${esListo ? 'opacity-40 grayscale' : ''}`;
+                    div.className = `bg-white p-4 rounded-lg shadow border-l-4 ${esListo ? 'border-gray-300 opacity-50 grayscale' : 'border-green-500'} flex justify-between items-center transition-all`;
                     div.innerHTML = `
-                        <div>
+                        <div class="text-left">
                             <h3 class="font-bold text-gray-800">${v.cliente}</h3>
-                            <p class="text-xs text-gray-500">${v.direccion}</p>
-                            <p class="text-green-600 font-bold">$${v.valor}</p>
+                            <p class="text-[10px] text-gray-400 uppercase">${v.direccion || 'Sin dirección'}</p>
+                            <div class="flex gap-3 mt-1 text-sm">
+                                <span class="text-green-600 font-bold">$${v.valor}</span>
+                                <span class="text-blue-500 font-medium">Com: $${v.comision}</span>
+                            </div>
                         </div>
                         <div id="status-${v.id}">
-                            ${esListo ? '<span>✅</span>' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow">LISTO</button>`}
+                            ${esListo ? '<span class="text-xl">✅</span>' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md active:bg-green-800">LISTO</button>`}
                         </div>
                     `;
                     lista.appendChild(div);
@@ -118,18 +138,16 @@
         }
 
         function marcarListo(id) {
-            // EFECTO INSTANTÁNEO (Para que Gucho no espere)
             const card = document.getElementById(`card-${id}`);
             const status = document.getElementById(`status-${id}`);
-            card.classList.add('opacity-40', 'grayscale');
-            status.innerHTML = '<span>✅</span>';
+            card.classList.add('opacity-50', 'grayscale', 'border-gray-300');
+            card.classList.remove('border-green-500');
+            status.innerHTML = '<span class="text-xl">✅</span>';
 
-            // Envío real a Google
             const url = `${SCRIPT_URL}?accion=COMPLETAR_VIAJE&id=${id}`;
-            new Image().src = url;
+            fetch(url, { mode: 'no-cors' });
 
-            // Refrescamos datos reales en 2 segundos solo para confirmar saldos
-            setTimeout(actualizarTodo, 2000);
+            setTimeout(actualizarTodo, 1500);
         }
     </script>
 </body>
