@@ -109,39 +109,36 @@
                 btn.innerText = "AÑADIR A LA RUTA";
             }
         }
+async function actualizarTodo() {
+    try {
+        // Cambiamos a método GET para evitar bloqueos de seguridad
+        const res = await fetch(SCRIPT_URL); 
+        const data = await res.json();
+        
+        document.getElementById('saldo-header').innerText = `$${data.hoy.toLocaleString()}`;
+        const lista = document.getElementById('lista-viajes');
+        lista.innerHTML = "";
 
-        async function actualizarTodo() {
-            const lista = document.getElementById('lista-viajes');
-            try {
-                const res = await fetch(SCRIPT_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify({ accion: "OBTENER_DATOS_COMPLETOS" }) 
-                });
-                const data = await res.json();
-                
-                document.getElementById('saldo-header').innerText = `$${data.hoy.toLocaleString()}`;
-                lista.innerHTML = "";
+        if(data.viajes.length === 0) {
+            lista.innerHTML = '<p class="text-center text-gray-400 mt-10">No hay viajes hoy.</p>';
+            return;
+        }
 
-                if(!data.viajes || data.viajes.length === 0) {
-                    lista.innerHTML = '<p class="text-center text-gray-400 mt-10 italic">No hay viajes registrados hoy.</p>';
-                    return;
-                }
-
-                data.viajes.forEach(v => {
-                    const esListo = v.estado === 'LISTO';
-                    const card = document.createElement('div');
-                    card.className = `bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center ${esListo ? 'card-listo' : ''}`;
-                    card.innerHTML = `
-                        <div class="max-w-[70%]">
-                            <h3 class="font-bold text-gray-800 leading-tight">${v.cliente}</h3>
-                            <p class="text-xs text-gray-500 truncate">${v.direccion || 'Sin dirección'}</p>
-                            <p class="text-green-600 font-bold mt-1">$${v.valor}</p>
-                        </div>
-                        <div>
-                            ${esListo ? 
-                                '<span class="bg-gray-200 text-gray-500 px-3 py-1 rounded-full text-[10px] font-bold">ENTREGADO</span>' : 
-                                `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold active:bg-green-800 transition shadow-sm">LISTO</button>`
-                            }
+        data.viajes.forEach(v => {
+            const esListo = v.estado === 'LISTO';
+            const card = document.createElement('div');
+            card.className = `bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center ${esListo ? 'card-listo' : ''}`;
+            card.innerHTML = `
+                <div>
+                    <h3 class="font-bold text-gray-800">${v.cliente}</h3>
+                    <p class="text-green-600 font-bold">$${v.valor}</p>
+                </div>
+                ${esListo ? '<span>✅</span>' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-3 py-1 rounded">LISTO</button>`}
+            `;
+            lista.appendChild(card);
+        });
+    } catch (e) { console.log("Error de lectura:", e); }
+}
                         </div>
                     `;
                     lista.appendChild(card);
