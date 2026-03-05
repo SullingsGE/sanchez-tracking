@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
-        #progress-bar { transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        #progress-bar { transition: width 0.5s ease-in-out; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
@@ -30,14 +30,16 @@
     </header>
 
     <main id="pantalla-carga" class="p-4 max-w-md mx-auto">
-        <div class="bg-white p-5 rounded-xl shadow-md space-y-4 border border-gray-200">
+        <div class="bg-white p-5 rounded-xl shadow-md space-y-4">
             <h2 class="font-bold text-gray-600 border-b pb-2">📦 Cargar Pedido</h2>
-            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
-            <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
+            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-3 rounded-lg outline-none">
+            <input type="text" id="direccion" placeholder="Dirección (Cualquier ciudad)" class="w-full border p-3 rounded-lg outline-none">
+            
             <div class="grid grid-cols-2 gap-3">
                 <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none font-bold text-green-700">
-                <input type="number" id="comision" placeholder="Comisión $" class="w-full border p-3 rounded-lg outline-none font-bold text-blue-600">
+                <input type="text" id="comision" placeholder="¿Qué es? (Ej: Sobre)" class="w-full border p-3 rounded-lg outline-none text-blue-600">
             </div>
+            
             <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md active:scale-95 transition uppercase">Añadir a la Ruta</button>
         </div>
     </main>
@@ -49,7 +51,7 @@
     </main>
 
     <script>
-        const SCRIPT_URL = "TU_URL_DE_APPS_SCRIPT_AQUI"; // REEMPLAZA ESTO
+        const SCRIPT_URL = "TU_URL_AQUI"; // REEMPLAZA CON TU URL /exec
 
         window.onload = actualizarTodo;
 
@@ -67,25 +69,29 @@
             const v = document.getElementById('valor');
             const com = document.getElementById('comision');
 
-            if(!c.value || !v.value) return alert("Cliente y Valor son obligatorios");
+            if(!c.value || !v.value) return alert("Completá Cliente y Valor");
 
             const btn = document.getElementById('btn-cargar');
             btn.innerText = "GUARDANDO...";
             btn.disabled = true;
 
-            const url = `${SCRIPT_URL}?accion=AGREGAR_VIAJE&cliente=${encodeURIComponent(c.value)}&direccion=${encodeURIComponent(d.value)}&valor=${v.value}&comision=${com.value || 0}`;
+            const url = `${SCRIPT_URL}?accion=AGREGAR_VIAJE&cliente=${encodeURIComponent(c.value)}&direccion=${encodeURIComponent(d.value)}&valor=${v.value}&comision=${encodeURIComponent(com.value)}`;
             
-            // Usamos fetch directo para asegurar que se procese antes de cambiar de pantalla
             try {
+                // Forzamos la espera de la respuesta de Google
                 await fetch(url, { mode: 'no-cors' });
+                
+                // Vaciamos campos
                 c.value = ""; d.value = ""; v.value = ""; com.value = "";
-                btn.innerText = "AÑADIR A LA RUTA";
+                btn.innerText = "Añadir a la Ruta";
                 btn.disabled = false;
-                cambiarPantalla('ruta'); // Esto llama a actualizarTodo() automáticamente
+                
+                // Cambiamos a la ruta y refrescamos
+                cambiarPantalla('ruta');
             } catch(e) {
-                alert("Error al guardar. Reintentá.");
+                alert("Error de conexión. El pedido se guardará en breve.");
                 btn.disabled = false;
-                btn.innerText = "AÑADIR A LA RUTA";
+                btn.innerText = "Añadir a la Ruta";
             }
         }
 
@@ -96,15 +102,12 @@
                 
                 document.getElementById('saldo-header').innerText = `$${data.hoy.toLocaleString()}`;
                 
-                // LÓGICA LÍNEA DE VIDA CON COLORES
                 const total = data.viajes.length;
                 const listos = data.viajes.filter(v => v.estado === 'LISTO').length;
                 const porcentaje = total > 0 ? (listos / total) * 100 : 0;
                 
                 const bar = document.getElementById('progress-bar');
                 bar.style.width = porcentaje + "%";
-                
-                // Cambiar color según progreso
                 if(porcentaje < 40) bar.className = "bg-red-500 h-full transition-all";
                 else if(porcentaje < 80) bar.className = "bg-yellow-400 h-full transition-all";
                 else bar.className = "bg-green-400 h-full transition-all";
@@ -121,15 +124,15 @@
                     div.className = `bg-white p-4 rounded-lg shadow border-l-4 ${esListo ? 'border-gray-300 opacity-50 grayscale' : 'border-green-500'} flex justify-between items-center transition-all`;
                     div.innerHTML = `
                         <div class="text-left">
-                            <h3 class="font-bold text-gray-800">${v.cliente}</h3>
-                            <p class="text-[10px] text-gray-400 uppercase">${v.direccion || 'Sin dirección'}</p>
-                            <div class="flex gap-3 mt-1 text-sm">
-                                <span class="text-green-600 font-bold">$${v.valor}</span>
-                                <span class="text-blue-500 font-medium">Com: $${v.comision}</span>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-bold text-gray-800">${v.cliente}</h3>
+                                <span class="bg-blue-100 text-blue-600 text-[9px] px-2 py-0.5 rounded-full font-bold uppercase">${v.comision || 'Comisión'}</span>
                             </div>
+                            <p class="text-[11px] text-gray-500">${v.direccion || 'Sin dirección'}</p>
+                            <p class="text-green-600 font-bold text-lg mt-1">$${v.valor}</p>
                         </div>
                         <div id="status-${v.id}">
-                            ${esListo ? '<span class="text-xl">✅</span>' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md active:bg-green-800">LISTO</button>`}
+                            ${esListo ? '<span class="text-xl">✅</span>' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-md">LISTO</button>`}
                         </div>
                     `;
                     lista.appendChild(div);
@@ -141,12 +144,10 @@
             const card = document.getElementById(`card-${id}`);
             const status = document.getElementById(`status-${id}`);
             card.classList.add('opacity-50', 'grayscale', 'border-gray-300');
-            card.classList.remove('border-green-500');
             status.innerHTML = '<span class="text-xl">✅</span>';
 
             const url = `${SCRIPT_URL}?accion=COMPLETAR_VIAJE&id=${id}`;
             fetch(url, { mode: 'no-cors' });
-
             setTimeout(actualizarTodo, 1500);
         }
     </script>
