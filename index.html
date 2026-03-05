@@ -8,16 +8,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <style>
-        .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen pb-10">
 
     <header class="bg-green-600 text-white sticky top-0 z-50 shadow-lg text-center">
         <div class="p-4">
-            <h1 class="text-xl font-bold italic">Sánchez Tracking</h1>
+            <h1 class="text-xl font-bold italic uppercase tracking-tighter">Sánchez Tracking</h1>
             <p id="saldo-hoy" class="text-3xl font-black text-yellow-300">$0</p>
             <p class="text-[10px] uppercase font-bold opacity-80 italic tracking-widest">Ingreso Bruto Hoy</p>
             <div class="w-full bg-green-800 h-2 mt-3 rounded-full overflow-hidden border border-green-700">
@@ -33,7 +33,7 @@
     <main id="pantalla-carga" class="p-4 max-w-md mx-auto space-y-4">
         <div class="bg-white p-5 rounded-2xl shadow-md space-y-3 border-t-4 border-green-500">
             <h2 class="text-[10px] font-black text-gray-400 uppercase tracking-widest">📦 Nuevo Pedido</h2>
-            <input type="text" id="comision" placeholder="¿Qué busca? (Sobre, Paquete, etc)" class="w-full border-2 p-3 rounded-xl outline-none focus:border-blue-500 font-bold text-blue-600">
+            <input type="text" id="comision" placeholder="¿Lo que busca? (Sobre, Paquete, etc)" class="w-full border-2 p-3 rounded-xl outline-none focus:border-blue-500 font-bold text-blue-600">
             <input type="text" id="direccion" placeholder="Dirección de entrega" class="w-full border-2 p-3 rounded-xl outline-none focus:border-green-500 font-bold">
             <div class="grid grid-cols-2 gap-2">
                 <input type="text" id="cliente" placeholder="Cliente" class="border-2 p-3 rounded-xl outline-none text-sm">
@@ -106,8 +106,7 @@
         };
 
         window.confirmarNafta = (res) => {
-            document.getElementById('gas-importe').value = ""; 
-            document.getElementById('gas-litros').value = "";
+            document.getElementById('gas-importe').value = ""; document.getElementById('gas-litros').value = "";
             document.getElementById('btn-nafta').innerText = "Registrar Gasto";
             alert("Combustible registrado");
             actualizarTodo();
@@ -118,6 +117,7 @@
         }
 
         window.renderizarInterfaz = (data) => {
+            if(!data) return;
             datosHoy = data.viajes || [];
             gastoNaftaHoy = data.nafta || 0;
             document.getElementById('saldo-hoy').innerText = `$${(data.hoy || 0).toLocaleString()}`;
@@ -137,7 +137,7 @@
                 
                 div.innerHTML = `
                     <div class="flex flex-col w-full">
-                        <div class="mb-3">
+                        <div class="mb-2">
                             <span class="text-[9px] font-black bg-blue-50 text-blue-600 px-2 py-1 rounded uppercase">Lo que busca:</span>
                             <h2 class="text-2xl font-black text-blue-800 leading-tight uppercase mt-1">${v.comision}</h2>
                         </div>
@@ -150,7 +150,7 @@
                             ${esListo 
                                 ? '<span class="w-full text-center py-4 bg-gray-100 text-gray-400 font-black rounded-xl italic">ENTREGADO ✅</span>' 
                                 : `
-                                <button onclick="marcarListo('${v.id}')" class="flex-[3] bg-green-600 text-white py-4 rounded-xl font-black uppercase shadow-md active:bg-green-700">Finalizar</button>
+                                <button onclick="marcarListo(${v.id})" class="flex-[3] bg-green-600 text-white py-4 rounded-xl font-black uppercase shadow-md active:bg-green-700">Finalizar</button>
                                 <div class="flex-1 text-center bg-green-50 py-2 rounded-xl border border-green-200">
                                     <p class="text-[8px] font-bold text-green-600 uppercase">Cobrar</p>
                                     <p class="text-sm font-black text-green-800">$${v.valor}</p>
@@ -164,10 +164,8 @@
         };
 
         function marcarListo(id) {
-            // Feedback visual inmediato
-            const btn = event.target;
-            btn.innerText = "PROCESANDO...";
-            btn.disabled = true;
+            event.target.innerText = "PROCESANDO...";
+            event.target.disabled = true;
             llamarGoogle({accion: "COMPLETAR_VIAJE", id: id}, "actualizarTodo");
         }
 
@@ -195,18 +193,19 @@
             const finalY = doc.lastAutoTable.finalY + 15;
             doc.setFontSize(12);
             doc.setTextColor(0);
-            doc.text(`Ingreso Bruto Total: $${totalBruto.toLocaleString()}`, 14, finalY);
+            doc.text(`Total Recaudado (Bruto): $${totalBruto.toLocaleString()}`, 14, finalY);
             doc.setTextColor(200, 0, 0);
             doc.text(`Gasto Combustible: - $${gastoNaftaHoy.toLocaleString()}`, 14, finalY + 8);
             
             doc.setDrawColor(200);
-            doc.line(14, finalY + 12, 100, finalY + 12);
+            doc.line(14, finalY + 12, 120, finalY + 12);
             
             doc.setFontSize(14);
             doc.setTextColor(21, 128, 61);
-            doc.text(`TOTAL NETO GANANCIA: $${neto.toLocaleString()}`, 14, finalY + 20);
+            doc.setFont(undefined, 'bold');
+            doc.text(`TOTAL NETO GANANCIA: $${neto.toLocaleString()}`, 14, finalY + 22);
             
-            doc.save(`Cierre_${fecha}.pdf`);
+            doc.save(`Cierre_Sánchez_${fecha}.pdf`);
         }
     </script>
 </body>
