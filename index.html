@@ -7,15 +7,22 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         .tab-active { border-bottom: 4px solid white; font-weight: bold; background: #15803d; }
+        #progress-bar { transition: width 0.5s ease-in-out; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen">
 
     <header class="bg-green-600 text-white sticky top-0 z-50 shadow-lg text-center">
         <div class="p-4">
-            <h1 class="text-xl font-bold">Sánchez Tracking</h1>
+            <h1 class="text-xl font-bold italic">Sánchez Tracking</h1>
             <p id="saldo-header" class="text-2xl font-bold text-yellow-300">$0</p>
+            
+            <div class="w-full bg-green-800 h-2 mt-3 rounded-full overflow-hidden">
+                <div id="progress-bar" class="bg-yellow-400 h-full" style="width: 0%"></div>
+            </div>
+            <p id="stats-text" class="text-[10px] uppercase mt-1 opacity-80">0 de 0 completados</p>
         </div>
+        
         <div class="flex bg-green-700">
             <button onclick="cambiarPantalla('carga')" id="tab-carga" class="flex-1 py-3 text-sm tab-active uppercase">Cargar</button>
             <button onclick="cambiarPantalla('ruta')" id="tab-ruta" class="flex-1 py-3 text-sm uppercase">Mi Ruta</button>
@@ -23,20 +30,21 @@
     </header>
 
     <main id="pantalla-carga" class="p-4 max-w-md mx-auto">
-        <div class="bg-white p-5 rounded-xl shadow-md space-y-3">
-            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-3 rounded-lg outline-none">
-            <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-3 rounded-lg outline-none">
-            <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none font-bold text-green-700">
-            <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md active:bg-green-800 transition">AÑADIR A LA RUTA</button>
+        <div class="bg-white p-5 rounded-xl shadow-md space-y-4">
+            <input type="text" id="cliente" placeholder="Cliente" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
+            <input type="text" id="direccion" placeholder="Dirección" class="w-full border p-3 rounded-lg outline-none focus:ring-2 focus:ring-green-500">
+            <input type="number" id="valor" placeholder="Valor $" class="w-full border p-3 rounded-lg outline-none font-bold text-green-700 text-xl">
+            <button onclick="enviarComision()" id="btn-cargar" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md active:scale-95 transition uppercase">Añadir a la Ruta</button>
         </div>
     </main>
 
     <main id="pantalla-ruta" class="p-4 max-w-md mx-auto hidden">
-        <div id="lista-viajes" class="space-y-3 text-center text-gray-400 mt-10 italic">Cargando...</div>
+        <div id="lista-viajes" class="space-y-3">
+            </div>
     </main>
 
     <script>
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyg5E0ETapCoHz06VqkTVV6fNUEgt8EFrbuVYlTiycptHstCugvfc-F8400Y7Gj9U_MMg/exec"; // <--- PEGA TU URL AQUÍ
+        const SCRIPT_URL = "TU_URL_DE_APPS_SCRIPT_AQUI"; // REEMPLAZA CON TU URL
 
         window.onload = actualizarTodo;
 
@@ -52,39 +60,57 @@
             const c = document.getElementById('cliente');
             const d = document.getElementById('direccion');
             const v = document.getElementById('valor');
-            if(!c.value || !v.value) return alert("Faltan datos");
+            if(!c.value || !v.value) return;
 
-            document.getElementById('btn-cargar').innerText = "GUARDANDO...";
-            
+            const btn = document.getElementById('btn-cargar');
+            btn.innerText = "GUARDANDO...";
+            btn.disabled = true;
+
+            // Envío por URL (más rápido)
             const url = `${SCRIPT_URL}?accion=AGREGAR_VIAJE&cliente=${encodeURIComponent(c.value)}&direccion=${encodeURIComponent(d.value)}&valor=${v.value}`;
-
-            // Usamos una técnica de "imagen" para enviar datos sin errores de CORS
-            const img = new Image();
-            img.src = url;
             
-            // Regla: vaciar campos
+            new Image().src = url; // Envío "fuego y olvido"
+
             setTimeout(() => {
                 c.value = ""; d.value = ""; v.value = "";
-                document.getElementById('btn-cargar').innerText = "AÑADIR A LA RUTA";
+                btn.innerText = "Añadir a la Ruta";
+                btn.disabled = false;
                 cambiarPantalla('ruta');
-            }, 1000);
+            }, 600);
         }
 
         async function actualizarTodo() {
             try {
                 const res = await fetch(SCRIPT_URL);
                 const data = await res.json();
-                document.getElementById('saldo-header').innerText = `$${data.hoy.toLocaleString()}`;
-                const lista = document.getElementById('lista-viajes');
-                lista.innerHTML = data.viajes.length === 0 ? "Sin viajes hoy." : "";
                 
+                document.getElementById('saldo-header').innerText = `$${data.hoy.toLocaleString()}`;
+                
+                // Actualizar Línea de Vida
+                const total = data.viajes.length;
+                const listos = data.viajes.filter(v => v.estado === 'LISTO').length;
+                const porcentaje = total > 0 ? (listos / total) * 100 : 0;
+                
+                document.getElementById('progress-bar').style.width = porcentaje + "%";
+                document.getElementById('stats-text').innerText = `${listos} de ${total} completados`;
+
+                const lista = document.getElementById('lista-viajes');
+                lista.innerHTML = "";
+
                 data.viajes.forEach(v => {
                     const esListo = v.estado === 'LISTO';
                     const div = document.createElement('div');
-                    div.className = `bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center ${esListo ? 'opacity-40' : ''}`;
+                    div.id = `card-${v.id}`;
+                    div.className = `bg-white p-4 rounded-lg shadow border-l-4 border-green-500 flex justify-between items-center transition-all ${esListo ? 'opacity-40 grayscale' : ''}`;
                     div.innerHTML = `
-                        <div class="text-left"><h3 class="font-bold text-gray-800">${v.cliente}</h3><p class="text-xs text-gray-500">${v.direccion}</p><p class="text-green-600 font-bold">$${v.valor}</p></div>
-                        ${esListo ? '<span>✅</span>' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-3 py-2 rounded text-xs font-bold shadow">LISTO</button>`}
+                        <div>
+                            <h3 class="font-bold text-gray-800">${v.cliente}</h3>
+                            <p class="text-xs text-gray-500">${v.direccion}</p>
+                            <p class="text-green-600 font-bold">$${v.valor}</p>
+                        </div>
+                        <div id="status-${v.id}">
+                            ${esListo ? '<span>✅</span>' : `<button onclick="marcarListo('${v.id}')" class="bg-green-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow">LISTO</button>`}
+                        </div>
                     `;
                     lista.appendChild(div);
                 });
@@ -92,10 +118,18 @@
         }
 
         function marcarListo(id) {
+            // EFECTO INSTANTÁNEO (Para que Gucho no espere)
+            const card = document.getElementById(`card-${id}`);
+            const status = document.getElementById(`status-${id}`);
+            card.classList.add('opacity-40', 'grayscale');
+            status.innerHTML = '<span>✅</span>';
+
+            // Envío real a Google
             const url = `${SCRIPT_URL}?accion=COMPLETAR_VIAJE&id=${id}`;
-            const img = new Image();
-            img.src = url;
-            setTimeout(actualizarTodo, 800);
+            new Image().src = url;
+
+            // Refrescamos datos reales en 2 segundos solo para confirmar saldos
+            setTimeout(actualizarTodo, 2000);
         }
     </script>
 </body>
